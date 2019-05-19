@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Linq;
@@ -50,11 +51,6 @@ namespace InteractivePictureBox
                 default:
                     return tempPoint;
             }
-        }
-
-        public PointF GetImagePoint(PointF actualPoint)
-        {
-            return new PointF();
         }
 
         public void Pan(float offsetX, float offsetY)
@@ -125,16 +121,17 @@ namespace InteractivePictureBox
 
         protected override void OnMouseWheel(MouseEventArgs e)
         {
-            var point = e.Location;
+            var point = TranslatePoint(new PointF(e.Location.X, e.Location.Y));
+            //Debug.WriteLine($"beform translate:{e.Location},after translate:{point}");
             if (Image != null)
             {
                 if (e.Delta > 0)
                 {
-                    service.Zoom(1.2f * service.Scale, new PointF(point.X, point.Y));
+                    service.Zoom(1.2f, point);
                 }
                 else
                 {
-                    service.Zoom(service.Scale / 1.2f, new PointF(point.X, point.Y));
+                    service.Zoom(1f / 1.2f, point);
                 }
                 Invalidate();
             }
@@ -237,151 +234,101 @@ namespace InteractivePictureBox
     internal class TransformService
     {
         private float scale;
-        private float scaleOffsetX;
-        private float scaleOffsetY;
-        private float translationX;
-        private float translationY;
-
-        private float newPanX;
-        private float newPanY;
 
         private bool matrixChanged = false;
 
+        private Matrix matrixInvert = new Matrix();
         private readonly Matrix matrix = new Matrix();
         private readonly Point[] singlePoint = new Point[1];
         private readonly PointF[] singlePointF = new PointF[1];
 
-
-
         public float ZoomMax { get; set; } = 1000;
-
-        public float TranslationX => translationX;
-
-        public float TranslationY => translationY;
-
-        public float Scale => scale;
-
-        public float ScaleOffsetX => scaleOffsetX;
-
-        public float ScaleOffsetY => scaleOffsetY;
 
         public TransformService()
         {
             scale = 1;
-            scaleOffsetX = 0;
-            scaleOffsetY = 0;
-            translationX = 0;
-            translationY = 0;
         }
 
-        public void Pan(float newX, float newY)
+        public void Pan(float offsetX, float offsetY)
         {
             matrixChanged = true;
-            newPanX = CoercePosition(newX);
-            newPanY = CoercePosition(newY);
-            PanInternal();
+            matrix.Translate(offsetX, offsetY, MatrixOrder.Append);
         }
 
         public void Zoom(float newZoom, PointF newZoomCenter)
         {
             matrixChanged = true;
-            scale = CoerceZoom(newZoom);
-            scaleOffsetX = newZoomCenter.X;
-            scaleOffsetY = newZoomCenter.Y;
+            scale = newZoom;
+            matrix.Translate(-newZoomCenter.X, -newZoomCenter.Y, MatrixOrder.Append);
+            matrix.Scale(scale, scale, MatrixOrder.Append);
+            matrix.Translate(newZoomCenter.X, newZoomCenter.Y, MatrixOrder.Append);
         }
 
         public void Restore()
         {
             scale = 1;
-            scaleOffsetX = 0;
-            scaleOffsetY = 0;
-            translationX = 0;
-            translationY = 0;
+            matrix.Reset();
             matrixChanged = true;
         }
 
         public void ApplyTransform(Graphics gs)
         {
-            gs.TranslateTransform(-scaleOffsetX, -scaleOffsetY, MatrixOrder.Append);
-            gs.ScaleTransform(scale, scale, MatrixOrder.Append);
-            gs.TranslateTransform(scaleOffsetX, scaleOffsetY, MatrixOrder.Append);
-            gs.TranslateTransform(translationX, translationY, MatrixOrder.Append);
+            EnsureMatrix();
+            gs.Transform = matrix;
         }
 
         public Point TranslatePoint(Point point)
         {
             EnsureMatrix();
             singlePoint[0] = point;
-            matrix.TransformPoints(singlePoint);
+            matrixInvert.TransformPoints(singlePoint);
             return singlePoint[0];
         }
 
         public void TranslatePoints(Point[] points)
         {
             EnsureMatrix();
-            matrix.TransformPoints(points);
+            matrixInvert.TransformPoints(points);
         }
 
         public PointF TranslatePoint(PointF point)
         {
             EnsureMatrix();
             singlePointF[0] = point;
-            matrix.TransformPoints(singlePointF);
+            matrixInvert.TransformPoints(singlePointF);
             return singlePointF[0];
         }
 
         public void TranslatePoints(PointF[] points)
         {
             EnsureMatrix();
-            matrix.TransformPoints(points);
+            matrixInvert.TransformPoints(points);
         }
 
         private void EnsureMatrix()
         {
             if (matrixChanged)
             {
-                matrix.Reset();
-                matrix.Translate(-scaleOffsetX, -scaleOffsetY, MatrixOrder.Append);
-                matrix.Scale(scale, scale, MatrixOrder.Append);
-                matrix.Translate(scaleOffsetX, scaleOffsetY, MatrixOrder.Append);
-                matrix.Translate(translationX, translationY, MatrixOrder.Append);
-                matrix.Invert();
+                matrixInvert = matrix.Clone();
+                matrixInvert.Invert();
+                matrixChanged = false;
             }
         }
 
-
-        private void PanInternal()
-        {
-            var deltaX = newPanX;
-            var deltaY = newPanY;
-
-            if (deltaX.IsNotEqual(0) || deltaY.IsNotEqual(0))
-            {
-                translationX += deltaX;
-                translationY += deltaY;
-            }
-        }
-
-
-        private float CoercePosition(float baseValue)
-        {
-            return baseValue.IsNanOrInfinity() ? 0.0f : baseValue;
-        }
-
-        private float CoerceZoom(float baseValue)
+        internal float CoerceZoom(float baseValue)
         {
             var zoom = baseValue;
             if (zoom < 0.1f)
             {
                 zoom = 0.1f;
             }
-            else if (zoom > ZoomMax)
+            if (zoom > ZoomMax)
             {
                 zoom = ZoomMax;
             }
-            else if (zoom.IsNanOrInfinity())
+            if (zoom.IsNanOrInfinity())
             {
-                zoom = 1;
+                zoom = 1f;
             }
             return zoom;
         }

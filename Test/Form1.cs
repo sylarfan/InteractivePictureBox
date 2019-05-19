@@ -16,18 +16,13 @@ namespace Test
             InitializeComponent();
         }
 
-        private float zoomFactor = 1;
-
         private void Button1_Click(object sender, EventArgs e)
         {
-            zoomFactor *= 1.2f;
-            myPictureBox1.Zoom(zoomFactor, new Point(myPictureBox1.Width / 2, myPictureBox1.Height / 2));
+            myPictureBox1.Restore();
         }
 
         private void Button2_Click(object sender, EventArgs e)
         {
-            zoomFactor /= 1.2f;
-            myPictureBox1.Zoom(zoomFactor, new Point(myPictureBox1.Width / 2, myPictureBox1.Height / 2));
         }
 
         private void MyPictureBox1_MouseMove(object sender, MouseEventArgs e)
