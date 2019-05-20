@@ -59,7 +59,7 @@ namespace InteractivePictureBox
             Invalidate();
         }
 
-        public void Zoom(float scale, Point zoomCenter)
+        public void Zoom(float scale, PointF zoomCenter)
         {
             service.Zoom(scale, zoomCenter);
             Invalidate();
@@ -78,6 +78,8 @@ namespace InteractivePictureBox
                 service.Restore();
             }
             Image = image;
+            //set_Image has internal Invalidate();
+            //https://referencesource.microsoft.com/#System.Windows.Forms/winforms/Managed/System/WinForms/PictureBox.cs,594784cfbb39d6e8
         }
 
 
@@ -122,7 +124,6 @@ namespace InteractivePictureBox
         protected override void OnMouseWheel(MouseEventArgs e)
         {
             var point = TranslatePoint(new PointF(e.Location.X, e.Location.Y));
-            //Debug.WriteLine($"beform translate:{e.Location},after translate:{point}");
             if (Image != null)
             {
                 if (e.Delta > 0)
@@ -147,6 +148,9 @@ namespace InteractivePictureBox
 
 
         #region TranslatePosition
+        //https://www.codeproject.com/Articles/20923/Mouse-Position-over-Image-in-a-PictureBox
+
+
         protected Point TranslateCenterImageMousePosition(Point coordinates)
         {
             // Test to make sure our image is not null
@@ -234,6 +238,10 @@ namespace InteractivePictureBox
     internal class TransformService
     {
         private float scale;
+        private float scaleOffsetX;
+        private float scaleOffsetY;
+        private float translateX;
+        private float translateY;
 
         private bool matrixChanged = false;
 
@@ -242,32 +250,41 @@ namespace InteractivePictureBox
         private readonly Point[] singlePoint = new Point[1];
         private readonly PointF[] singlePointF = new PointF[1];
 
-        public float ZoomMax { get; set; } = 1000;
+        public float ScaleMax { get; set; } = 1000;
+
+        public float Scale { get { return scale; } }
 
         public TransformService()
         {
-            scale = 1;
+            scale = 1f;
+            scaleOffsetX = scaleOffsetY = translateX = translateY = 0f;
         }
 
         public void Pan(float offsetX, float offsetY)
         {
             matrixChanged = true;
-            matrix.Translate(offsetX, offsetY, MatrixOrder.Append);
+            translateX += offsetX;
+            translateY += offsetY;
         }
 
-        public void Zoom(float newZoom, PointF newZoomCenter)
+        public void Zoom(float zoomFactor, PointF zoomCenter)
         {
             matrixChanged = true;
-            scale = newZoom;
-            matrix.Translate(-newZoomCenter.X, -newZoomCenter.Y, MatrixOrder.Append);
-            matrix.Scale(scale, scale, MatrixOrder.Append);
-            matrix.Translate(newZoomCenter.X, newZoomCenter.Y, MatrixOrder.Append);
+            var oldScale = scale;
+            scale = CoerceZoom(scale * zoomFactor);
+
+            var deltaScale = scale - oldScale;
+            float deltaX = -zoomCenter.X * deltaScale;
+            float deltaY = -zoomCenter.Y * deltaScale;
+
+            scaleOffsetX += deltaX;
+            scaleOffsetY += deltaY;
         }
 
         public void Restore()
         {
             scale = 1;
-            matrix.Reset();
+            scaleOffsetX = scaleOffsetY = translateX = translateY = 0f;
             matrixChanged = true;
         }
 
@@ -277,6 +294,7 @@ namespace InteractivePictureBox
             gs.Transform = matrix;
         }
 
+        #region Translate
         public Point TranslatePoint(Point point)
         {
             EnsureMatrix();
@@ -304,11 +322,19 @@ namespace InteractivePictureBox
             EnsureMatrix();
             matrixInvert.TransformPoints(points);
         }
+        #endregion
+
+
 
         private void EnsureMatrix()
         {
             if (matrixChanged)
             {
+                matrix.Reset();
+                matrix.Scale(scale, scale, MatrixOrder.Append);
+                matrix.Translate(scaleOffsetX, scaleOffsetY, MatrixOrder.Append);
+                matrix.Translate(translateX, translateY, MatrixOrder.Append);
+
                 matrixInvert = matrix.Clone();
                 matrixInvert.Invert();
                 matrixChanged = false;
@@ -322,9 +348,9 @@ namespace InteractivePictureBox
             {
                 zoom = 0.1f;
             }
-            if (zoom > ZoomMax)
+            if (zoom > ScaleMax)
             {
-                zoom = ZoomMax;
+                zoom = ScaleMax;
             }
             if (zoom.IsNanOrInfinity())
             {
