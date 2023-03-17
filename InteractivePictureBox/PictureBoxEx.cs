@@ -125,37 +125,6 @@ namespace InteractivePictureBox
                     tempPoint = tempPointF;
                     break;
             }
-            var size = Image.Size;
-            if (Glo.appConfig.ScanCrossMove)
-            {
-                if (Glo.CraftMode == CraftMode.Scan)
-                {
-                    return new Point((int)(tempPoint.X - size.Width / 2 - Glo.ScanOffsetX - 1), (int)(tempPoint.Y - size.Height / 2 - Glo.ScanOffsetY - 1));
-                }
-                else if (Glo.CraftMode == CraftMode.Slit)
-                {
-                    if (Glo.appConfig.PixelSize > 0)
-                    {
-                        return new Point((int)(tempPoint.X - size.Width / 2 - (Glo.appConfig.SlitOffsetX / Glo.appConfig.PixelSize) - Glo.SlitPixelOffsetX - 1), (int)(tempPoint.Y - size.Height / 2 - (Glo.appConfig.SlitOffsetY / Glo.appConfig.PixelSize) - Glo.SlitPixelOffsetY - 1));
-                    }
-                    else
-                    {
-                        return new Point((int)(tempPoint.X - size.Width / 2 - Glo.SlitPixelOffsetX - 1), (int)(tempPoint.Y - size.Height / 2 - Glo.SlitPixelOffsetY - 1));
-                    }
-                }
-                else
-                {
-                    return new Point((int)(tempPoint.X - size.Width / 2 - 1), (int)(tempPoint.Y - size.Height / 2 - 1));
-                }
-            }
-            else if (Glo.CraftMode == CraftMode.Slit && Glo.appConfig.PixelSize > 0)
-            {
-                return new Point((int)(tempPoint.X - size.Width / 2 - (Glo.appConfig.SlitOffsetX / Glo.appConfig.PixelSize) - 1), (int)(tempPoint.Y - size.Height / 2 - (Glo.appConfig.SlitOffsetY / Glo.appConfig.PixelSize) - 1));
-            }
-            else
-            {
-                return new Point((int)(tempPoint.X - size.Width / 2 - 1), (int)(tempPoint.Y - size.Height / 2 - 1));
-            }
         }
 
 
