@@ -9,11 +9,56 @@ using System.Windows.Forms;
 
 namespace InteractivePictureBox
 {
-    public class PictureBoxEx : PictureBox
+      public class PictureBoxEx : PictureBox
     {
         private readonly TransformService service = new TransformService();
         private bool isMoving = false;
         private Point prevPoint;
+        private bool useInteract = false;
+
+        public event MousePanImageEventHandler OnMouseInteractive;
+
+        public Matrix ImageTransform
+        {
+            get
+            {
+                return service.Transform;
+            }
+        }
+
+        [DefaultValue(false)]
+        [DisplayName("使用交互")]
+        public bool UseInteract
+        {
+            get { return useInteract; }
+            set
+            {
+                if (useInteract)
+                {
+                    Restore();
+                }
+                useInteract = value;
+            }
+        }
+
+        public PictureBoxEx()
+            : base()
+        {
+            //DoubleBuffered = true;
+        }
+
+        //https://stackoverflow.com/questions/6624406/how-to-make-label-transparent-without-any-flickering-at-load-time
+        //double buffered
+        //protected override CreateParams CreateParams
+        //{
+        //    get
+        //    {
+        //        CreateParams cp = base.CreateParams;
+        //        cp.ExStyle |= 0x02000000;  // Turn on WS_EX_COMPOSITED
+        //        return cp;
+        //    }
+        //}
+
 
         public Point TranslatePoint(Point actualPoint)
         {
@@ -37,21 +82,83 @@ namespace InteractivePictureBox
 
         public Point GetImagePoint(Point actualPoint)
         {
-            var tempPoint = TranslatePoint(actualPoint);
+            var tempPointF = TranslatePoint(new PointF(actualPoint.X, actualPoint.Y));
+            PointF tempPoint;
             switch (SizeMode)
             {
                 case PictureBoxSizeMode.StretchImage:
-                    return TranslateStretchImageMousePosition(tempPoint);
+                    tempPoint = TranslateStretchImageMousePosition(tempPointF);
+                    break;
                 case PictureBoxSizeMode.CenterImage:
-                    return TranslateCenterImageMousePosition(tempPoint);
+                    tempPoint = TranslateCenterImageMousePosition(tempPointF);
+                    break;
                 case PictureBoxSizeMode.Zoom:
-                    return TranslateZoomMousePosition(tempPoint);
+                    tempPoint = TranslateZoomMousePosition(tempPointF);
+                    break;
                 case PictureBoxSizeMode.Normal:
                 case PictureBoxSizeMode.AutoSize:
                 default:
-                    return tempPoint;
+                    tempPoint = tempPointF;
+                    break;
+            }
+            return new Point((int)tempPoint.X, (int)tempPoint.Y);
+        }
+
+        public Point GetImagePointCenter(Point point)
+        {
+            var tempPointF = TranslatePoint(new PointF(point.X, point.Y));
+            PointF tempPoint;
+            switch (SizeMode)
+            {
+                case PictureBoxSizeMode.StretchImage:
+                    tempPoint = TranslateStretchImageMousePosition(tempPointF);
+                    break;
+                case PictureBoxSizeMode.CenterImage:
+                    tempPoint = TranslateCenterImageMousePosition(tempPointF);
+                    break;
+                case PictureBoxSizeMode.Zoom:
+                    tempPoint = TranslateZoomMousePosition(tempPointF);
+                    break;
+                case PictureBoxSizeMode.Normal:
+                case PictureBoxSizeMode.AutoSize:
+                default:
+                    tempPoint = tempPointF;
+                    break;
+            }
+            var size = Image.Size;
+            if (Glo.appConfig.ScanCrossMove)
+            {
+                if (Glo.CraftMode == CraftMode.Scan)
+                {
+                    return new Point((int)(tempPoint.X - size.Width / 2 - Glo.ScanOffsetX - 1), (int)(tempPoint.Y - size.Height / 2 - Glo.ScanOffsetY - 1));
+                }
+                else if (Glo.CraftMode == CraftMode.Slit)
+                {
+                    if (Glo.appConfig.PixelSize > 0)
+                    {
+                        return new Point((int)(tempPoint.X - size.Width / 2 - (Glo.appConfig.SlitOffsetX / Glo.appConfig.PixelSize) - Glo.SlitPixelOffsetX - 1), (int)(tempPoint.Y - size.Height / 2 - (Glo.appConfig.SlitOffsetY / Glo.appConfig.PixelSize) - Glo.SlitPixelOffsetY - 1));
+                    }
+                    else
+                    {
+                        return new Point((int)(tempPoint.X - size.Width / 2 - Glo.SlitPixelOffsetX - 1), (int)(tempPoint.Y - size.Height / 2 - Glo.SlitPixelOffsetY - 1));
+                    }
+                }
+                else
+                {
+                    return new Point((int)(tempPoint.X - size.Width / 2 - 1), (int)(tempPoint.Y - size.Height / 2 - 1));
+                }
+            }
+            else if (Glo.CraftMode == CraftMode.Slit && Glo.appConfig.PixelSize > 0)
+            {
+                return new Point((int)(tempPoint.X - size.Width / 2 - (Glo.appConfig.SlitOffsetX / Glo.appConfig.PixelSize) - 1), (int)(tempPoint.Y - size.Height / 2 - (Glo.appConfig.SlitOffsetY / Glo.appConfig.PixelSize) - 1));
+            }
+            else
+            {
+                return new Point((int)(tempPoint.X - size.Width / 2 - 1), (int)(tempPoint.Y - size.Height / 2 - 1));
             }
         }
+
+
 
         public void Pan(float offsetX, float offsetY)
         {
@@ -86,8 +193,29 @@ namespace InteractivePictureBox
 
         protected override void OnMouseDown(MouseEventArgs e)
         {
-            isMoving = true;
-            prevPoint = e.Location;
+            if (Image != null)
+            {
+                var canMove = false;
+                if (OnMouseInteractive != null)
+                {
+                    var earg = new PanZoomImageEventArgs(e.Button, e.Clicks, e.X, e.Y, e.Delta, MouseAction.Pan);
+                    OnMouseInteractive(this, earg);
+                    canMove = !earg.Cancel;
+                }
+                else if (useInteract)
+                {
+                    canMove = true;
+                }
+                if (canMove)
+                {
+                    isMoving = true;
+                    prevPoint = e.Location;
+                }
+                if (!Focused)
+                {
+                    Focus();
+                }
+            }
             base.OnMouseDown(e);
         }
 
@@ -101,12 +229,11 @@ namespace InteractivePictureBox
         {
             base.OnMouseHover(e);
             //for mouse wheel event can fire
-            Focus();
         }
 
         protected override void OnMouseMove(MouseEventArgs e)
         {
-            if (isMoving)
+            if (isMoving && useInteract)
             {
                 if (Image != null)
                 {
@@ -118,23 +245,43 @@ namespace InteractivePictureBox
                     Invalidate();
                 }
             }
+            //if (!Focused)
+            //{
+            //    Focus();
+            //}
             base.OnMouseMove(e);
         }
 
+
+
         protected override void OnMouseWheel(MouseEventArgs e)
         {
-            var point = TranslatePoint(new PointF(e.Location.X, e.Location.Y));
-            if (Image != null)
+            if (Image != null && useInteract)
             {
-                if (e.Delta > 0)
+                var point = TranslatePoint(new PointF(e.Location.X, e.Location.Y));
+                var canZoom = false;
+                if (OnMouseInteractive != null)
                 {
-                    service.Zoom(1.2f, point);
+                    var earg = new PanZoomImageEventArgs(e.Button, e.Clicks, e.X, e.Y, e.Delta, MouseAction.Zoom);
+                    OnMouseInteractive(this, earg);
+                    canZoom = !earg.Cancel;
                 }
                 else
                 {
-                    service.Zoom(1f / 1.2f, point);
+                    canZoom = true;
                 }
-                Invalidate();
+                if (canZoom)
+                {
+                    if (e.Delta > 0)
+                    {
+                        service.Zoom(1.2f, point);
+                    }
+                    else
+                    {
+                        service.Zoom(1f / 1.2f, point);
+                    }
+                    Invalidate();
+                }
             }
             base.OnMouseWheel(e);
         }
@@ -142,7 +289,11 @@ namespace InteractivePictureBox
         protected override void OnPaint(PaintEventArgs pe)
         {
             pe.Graphics.InterpolationMode = InterpolationMode.NearestNeighbor;
-            service.ApplyTransform(pe.Graphics);
+            pe.Graphics.PixelOffsetMode = PixelOffsetMode.Half;
+            if (useInteract)
+            {
+                service.ApplyTransform(pe.Graphics);
+            }
             base.OnPaint(pe);
         }
 
@@ -171,6 +322,27 @@ namespace InteractivePictureBox
             return coordinates;
         }
 
+        protected PointF TranslateCenterImageMousePosition(PointF coordinates)
+        {
+            // Test to make sure our image is not null
+            if (Image == null) return coordinates;
+            // First, get the top location (relative to the top left of the control) 
+            // of the image itself
+            // To do this, we know that the image is centered, so we get the difference in size 
+            // (width and height) of the image to the control
+            int diffWidth = Width - Image.Width;
+            int diffHeight = Height - Image.Height;
+            // We now divide in half to accommodate each side of the image
+            diffWidth /= 2;
+            diffHeight /= 2;
+            // Finally, we subtract this number from the original coordinates
+            // In the case that the image is larger than the picture box, this still works
+            coordinates.X -= diffWidth;
+            coordinates.Y -= diffHeight;
+            return coordinates;
+        }
+
+
         protected Point TranslateStretchImageMousePosition(Point coordinates)
         {
             // test to make sure our image is not null
@@ -186,6 +358,23 @@ namespace InteractivePictureBox
             newX *= ratioWidth;
             newY *= ratioHeight;
             return new Point((int)newX, (int)newY);
+        }
+
+        protected PointF TranslateStretchImageMousePosition(PointF coordinates)
+        {
+            // test to make sure our image is not null
+            if (Image == null) return coordinates;
+            // Make sure our control width and height are not 0
+            if (Width == 0 || Height == 0) return coordinates;
+            // First, get the ratio (image to control) the height and width
+            float ratioWidth = (float)Image.Width / Width;
+            float ratioHeight = (float)Image.Height / Height;
+            // Scale the points by our ratio
+            float newX = coordinates.X;
+            float newY = coordinates.Y;
+            newX *= ratioWidth;
+            newY *= ratioHeight;
+            return new PointF(newX, newY);
         }
 
         protected Point TranslateZoomMousePosition(Point coordinates)
@@ -230,6 +419,51 @@ namespace InteractivePictureBox
             }
             return new Point((int)newX, (int)newY);
         }
+
+        protected PointF TranslateZoomMousePosition(PointF coordinates)
+        {
+            // test to make sure our image is not null
+            if (Image == null) return coordinates;
+            // Make sure our control width and height are not 0 and our 
+            // image width and height are not 0
+            if (Width == 0 || Height == 0 || Image.Width == 0 || Image.Height == 0) return coordinates;
+            // This is the one that gets a little tricky. Essentially, need to check 
+            // the aspect ratio of the image to the aspect ratio of the control
+            // to determine how it is being rendered
+            float imageAspect = (float)Image.Width / Image.Height;
+            float controlAspect = (float)Width / Height;
+            float newX = coordinates.X;
+            float newY = coordinates.Y;
+            if (imageAspect > controlAspect)
+            {
+                // This means that we are limited by width, 
+                // meaning the image fills up the entire control from left to right
+                float ratioWidth = (float)Image.Width / Width;
+                newX *= ratioWidth;
+                float scale = (float)Width / Image.Width;
+                float displayHeight = scale * Image.Height;
+                float diffHeight = Height - displayHeight;
+                diffHeight /= 2;
+                newY -= diffHeight;
+                newY /= scale;
+            }
+            else
+            {
+                // This means that we are limited by height, 
+                // meaning the image fills up the entire control from top to bottom
+                float ratioHeight = (float)Image.Height / Height;
+                newY *= ratioHeight;
+                float scale = (float)Height / Image.Height;
+                float displayWidth = scale * Image.Width;
+                float diffWidth = Width - displayWidth;
+                diffWidth /= 2;
+                newX -= diffWidth;
+                newX /= scale;
+            }
+            return new PointF(newX, newY);
+        }
+
+
         #endregion
 
     }
