@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -17,14 +18,6 @@ namespace InteractivePictureBox
         private bool useInteract = false;
 
         public event MousePanImageEventHandler OnMouseInteractive;
-
-        public Matrix ImageTransform
-        {
-            get
-            {
-                return service.Transform;
-            }
-        }
 
         [DefaultValue(false)]
         [DisplayName("使用交互")]
@@ -125,6 +118,8 @@ namespace InteractivePictureBox
                     tempPoint = tempPointF;
                     break;
             }
+            var size = Image.Size;
+            return new Point((int)tempPoint.X - size.Width / 2 + 1, (int)tempPoint.Y - size.Height / 2 + 1);
         }
 
 
@@ -628,5 +623,87 @@ namespace InteractivePictureBox
         }
 
 
+    }
+
+    public delegate void MousePanImageEventHandler(object sender, PanZoomImageEventArgs e);
+
+    public class PanZoomImageEventArgs : CancelEventArgs
+    {
+
+        // 参数:
+        //   button:
+        //     System.Windows.Forms.MouseButtons 值之一，它指示曾按下的是哪个鼠标按钮。
+        //
+        //   clicks:
+        //     鼠标按钮曾被按下的次数。
+        //
+        //   x:
+        //     鼠标单击的 x 坐标（以像素为单位）。
+        //
+        //   y:
+        //     鼠标单击的 y 坐标（以像素为单位）。
+        //
+        //   delta:
+        //     鼠标轮已转动的制动器数的有符号计数。
+        public PanZoomImageEventArgs(MouseButtons button, int clicks, int x, int y, int delta, MouseAction mouseAction)
+        {
+            Button = button;
+            Clicks = clicks;
+            X = x;
+            Y = y;
+            Delta = delta;
+            Location = new Point(x, y);
+            MouseAction = mouseAction;
+        }
+
+        public MouseAction MouseAction { get; private set; }
+
+        //
+        // 摘要:
+        //     获取曾按下的是哪个鼠标按钮。
+        //
+        // 返回结果:
+        //     System.Windows.Forms.MouseButtons 值之一。
+        public MouseButtons Button { get; private set; }
+        //
+        // 摘要:
+        //     获取按下并释放鼠标按钮的次数。
+        //
+        // 返回结果:
+        //     一个 System.Int32，包含按下并释放鼠标按钮的次数。
+        public int Clicks { get; private set; }
+        //
+        // 摘要:
+        //     获取鼠标在产生鼠标事件时的 x 坐标。
+        //
+        // 返回结果:
+        //     鼠标的 X 坐标（以像素为单位）。
+        public int X { get; private set; }
+        //
+        // 摘要:
+        //     获取鼠标在产生鼠标事件时的 y 坐标。
+        //
+        // 返回结果:
+        //     鼠标的 Y 坐标（以像素为单位）。
+        public int Y { get; private set; }
+        //
+        // 摘要:
+        //     获取鼠标轮已转动的制动器数的有符号计数。制动器是鼠标轮的一个凹口。
+        //
+        // 返回结果:
+        //     鼠标轮已转动的制动器数的有符号计数。
+        public int Delta { get; private set; }
+        //
+        // 摘要:
+        //     获取鼠标在产生鼠标事件时的位置。
+        //
+        // 返回结果:
+        //     一个 System.Drawing.Point，其中包含鼠标相对于窗体左上角的 x 坐标和 y 坐标（以像素为单位）。
+        public Point Location { get; private set; }
+    }
+
+    public enum MouseAction
+    {
+        Pan, Zoom
     }
 }

@@ -37,10 +37,9 @@
             // 
             // button1
             // 
-            this.button1.Location = new System.Drawing.Point(996, 109);
-            this.button1.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.button1.Location = new System.Drawing.Point(747, 87);
             this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(100, 29);
+            this.button1.Size = new System.Drawing.Size(75, 23);
             this.button1.TabIndex = 1;
             this.button1.Text = "button1";
             this.button1.UseVisualStyleBackColor = true;
@@ -48,10 +47,9 @@
             // 
             // button2
             // 
-            this.button2.Location = new System.Drawing.Point(996, 166);
-            this.button2.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.button2.Location = new System.Drawing.Point(747, 133);
             this.button2.Name = "button2";
-            this.button2.Size = new System.Drawing.Size(100, 29);
+            this.button2.Size = new System.Drawing.Size(75, 23);
             this.button2.TabIndex = 3;
             this.button2.Text = "button2";
             this.button2.UseVisualStyleBackColor = true;
@@ -60,10 +58,9 @@
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(993, 364);
-            this.label1.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
+            this.label1.Location = new System.Drawing.Point(745, 291);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(55, 15);
+            this.label1.Size = new System.Drawing.Size(41, 12);
             this.label1.TabIndex = 4;
             this.label1.Text = "label1";
             // 
@@ -71,25 +68,24 @@
             // 
             this.myPictureBox1.BackColor = System.Drawing.SystemColors.Desktop;
             this.myPictureBox1.Image = global::Test.Properties.Resources.fabrik;
-            this.myPictureBox1.Location = new System.Drawing.Point(72, 42);
-            this.myPictureBox1.Margin = new System.Windows.Forms.Padding(4);
+            this.myPictureBox1.Location = new System.Drawing.Point(54, 34);
             this.myPictureBox1.Name = "myPictureBox1";
-            this.myPictureBox1.Size = new System.Drawing.Size(898, 660);
+            this.myPictureBox1.Size = new System.Drawing.Size(674, 528);
             this.myPictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.myPictureBox1.TabIndex = 2;
             this.myPictureBox1.TabStop = false;
+            this.myPictureBox1.UseInteract = true;
             this.myPictureBox1.MouseMove += new System.Windows.Forms.MouseEventHandler(this.MyPictureBox1_MouseMove);
             // 
             // Form1
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 15F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1203, 764);
+            this.ClientSize = new System.Drawing.Size(902, 611);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.button2);
             this.Controls.Add(this.myPictureBox1);
             this.Controls.Add(this.button1);
-            this.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.Name = "Form1";
             this.Text = "Form1";
             ((System.ComponentModel.ISupportInitialize)(this.myPictureBox1)).EndInit();
